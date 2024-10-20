@@ -22,6 +22,8 @@ SECTIONS
     KEEP(*(.vector_table.reset_vector));
     /* The next 14 entries are exception vectors - core-specific */
     KEEP(*(.vector_table.exceptions));
+    /* The next 81 entries are interrup vectors - stm32f407-specific */
+    KEEP(*(.vector_table.interrupts));
   } > FLASH
 
   .text :
@@ -54,13 +56,4 @@ SECTIONS
   {
     *(.ARM.exidx .ARM.exidx.*);
   }
-
-  PROVIDE(NMI = DefaultExceptionHandler);
-  PROVIDE(HardFault = DefaultExceptionHandler);
-  PROVIDE(MemManage = DefaultExceptionHandler);
-  PROVIDE(BusFault = DefaultExceptionHandler);
-  PROVIDE(UsageFault = DefaultExceptionHandler);
-  PROVIDE(SVCall = DefaultExceptionHandler);
-  PROVIDE(PendSV = DefaultExceptionHandler);
-  PROVIDE(SysTick = DefaultExceptionHandler);
 }
