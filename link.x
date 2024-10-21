@@ -3,7 +3,7 @@
 MEMORY
 {
   FLASH : ORIGIN = 0x08000000, LENGTH = 1M
-  RAM : ORIGIN = 0x20000000, LENGTH = 192K
+  RAM : ORIGIN = 0x20000000, LENGTH = 128K /* TODO: clarify memory banks */
 }
 
 /* The entry point is the reset handler */
