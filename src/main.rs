@@ -1,63 +1,75 @@
 #![no_std]
 #![no_main]
 #![feature(linkage)]
+#![feature(generic_const_exprs)]
 
 mod mmio;
 mod sys;
 mod vectors;
 
-use mmio::BitRegionR;
-use mmio::BitRegionRW;
+mod periph;
 
-struct RCC_AHB1ENR_GPIODEN;
-
-const RCC: u32 = 0x40023800; // RM, page 65
-const RCC_AHB1ENR: u32 = RCC + 0x30; // RM, page 244
-const AHB1ENR_GPIODEN_OFFT: u32 = 3;
-
-impl mmio::BitRegionR<RCC_AHB1ENR, AHB1ENR_GPIODEN_OFFT, 1>
-    for RCC_AHB1ENR_GPIODEN
-{
-}
-impl mmio::BitRegionRW<RCC_AHB1ENR, AHB1ENR_GPIODEN_OFFT, 1>
-    for RCC_AHB1ENR_GPIODEN
-{
-}
-
-struct GPIOD_MODER15;
-
-const GPIOD: u32 = 0x40020C00; // RM page 65
-const GPIOD_MODER: u32 = GPIOD + 0; // RM page 284
-const MODER_PIN15_OFFT: u32 = 30;
-
-impl mmio::BitRegionR<GPIOD_MODER, MODER_PIN15_OFFT, 2> for GPIOD_MODER15 {}
-impl mmio::BitRegionRW<GPIOD_MODER, MODER_PIN15_OFFT, 2> for GPIOD_MODER15 {}
-
-struct GPIOD_ODR15;
-
-const GPIOD_ODR: u32 = GPIOD + 0x14; // RM page 286
-const ODR_PIN15_OFFT: u32 = 15;
-
-impl mmio::BitRegionR<GPIOD_ODR, ODR_PIN15_OFFT, 1> for GPIOD_ODR15 {}
-impl mmio::BitRegionRW<GPIOD_ODR, ODR_PIN15_OFFT, 1> for GPIOD_ODR15 {}
+use crate::periph::gpio::GpioModer;
+use crate::periph::gpio::GpioOdr;
+use periph::gpio::GpioModerCompat;
 
 fn stub_delay() {
     for _ in 0..(1 << 12) {
-        unsafe { core::ptr::read_volatile(GPIOD_MODER as *const u32) };
+        unsafe { core::ptr::read_volatile(0x40020000 as *const u32) };
     }
 }
 
+fn call_example<R, F>()
+where
+    R: periph::gpio::Gpio<MODER: GpioModer>,
+    F: GpioModerCompat<{ R::MODER::REG_ADDR }>,
+{
+    R::MODER::set_out::<F>();
+}
+
 pub fn main() {
-    // let b = mmio::BitRegionValue::<1, 1>::new();
+    // Turn on RCC clocks on port D
+    {
+        type Reg = <periph::rcc::RCC as periph::rcc::Rcc>::AHB1ENR;
+        type Fld = periph::rcc::AHB1ENR_GPIODEN;
+        Reg::ahb1p_en::<Fld>();
+    }
 
-    RCC_AHB1ENR_GPIODEN::set::<1>();
-    GPIOD_MODER15::set::<1>();
+    // Set output of PD12 to PD15 to output
+    {
+        type Reg = <periph::gpio::GPIOD as periph::gpio::Gpio>::MODER;
+        type Mode12 = periph::gpio::GPIOD_MODER12;
+        type Mode13 = periph::gpio::GPIOD_MODER13;
+        type Mode14 = periph::gpio::GPIOD_MODER14;
+        type Mode15 = periph::gpio::GPIOD_MODER15;
 
+        Reg::set_out::<Mode12>();
+        Reg::set_out::<Mode13>();
+        Reg::set_out::<Mode14>();
+        Reg::set_out::<Mode15>();
+    }
+
+    // Toggle all PD12 to PD15
     loop {
+        type Reg = <periph::gpio::GPIOD as periph::gpio::Gpio>::ODR;
+        type Pin12 = periph::gpio::GPIOD_ODR12;
+        type Pin13 = periph::gpio::GPIOD_ODR13;
+        type Pin14 = periph::gpio::GPIOD_ODR14;
+        type Pin15 = periph::gpio::GPIOD_ODR15;
+
+        Reg::set::<Pin12>();
+        Reg::set::<Pin13>();
+        Reg::set::<Pin14>();
+        Reg::set::<Pin15>();
+
         stub_delay();
-        GPIOD_ODR15::set::<1>();
+
+        Reg::reset::<Pin12>();
+        Reg::reset::<Pin13>();
+        Reg::reset::<Pin14>();
+        Reg::reset::<Pin15>();
+
         stub_delay();
-        GPIOD_ODR15::set::<0>();
     }
 }
 
